@@ -2,119 +2,359 @@
 <html lang="th">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#07080c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>ซับไทยสด</title>
-<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600&family=Sarabun:wght@400;600&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&family=Sarabun:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <style>
-  :root{--bg:#0b0c10;--panel:#161820;--line:#2a2e39;--text:#f3f3f5;--muted:#9097a5;--accent:#7bd389;--warn:#f2c14e;--err:#ff7a7a}
-  *{box-sizing:border-box}
-  html,body{margin:0;background:var(--bg);color:var(--text);font-family:"Sarabun",system-ui,sans-serif}
-  body{padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
-  .wrap{max-width:900px;margin:0 auto;padding:12px}
-  h1{font-family:"Prompt",sans-serif;font-size:1.2rem;margin:4px 0 10px}
-  .cam{position:relative;border-radius:12px;overflow:hidden;background:#000;border:1px solid var(--line)}
-  video{display:block;width:100%;height:auto}
-  .box{position:absolute;left:5%;right:5%;border:2px dashed var(--warn);border-radius:6px;pointer-events:none;box-shadow:0 0 0 9999px rgba(0,0,0,.35)}
-  .sub{margin-top:12px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;min-height:96px;transition:opacity .4s}
-  .th{font-family:"Prompt",sans-serif;font-size:1.55rem;line-height:1.45}
-  .en{color:var(--muted);font-size:.95rem;margin-top:4px}
-  .faded{opacity:.45}
-  .bar{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-  button{border:0;border-radius:12px;padding:12px 16px;font-family:"Prompt",sans-serif;font-size:1rem;font-weight:600;cursor:pointer;background:#232733;color:var(--text)}
-  button.main{background:var(--accent);color:#08180c;flex:1}
-  details{margin-top:12px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px}
-  summary{cursor:pointer;font-family:"Prompt",sans-serif}
-  label{display:block;margin:10px 0 4px;color:var(--muted);font-size:.9rem}
-  input[type=text]{width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);background:#0f1116;color:var(--text);font-size:.9rem}
-  input[type=range]{width:100%;accent-color:var(--accent)}
-  .chk{display:flex;align-items:center;gap:8px;color:var(--text)}
-  #dbg{display:block;max-width:100%;margin-top:8px;border-radius:6px;background:#fff}
-  .status{font-size:.85rem;color:var(--muted);margin-top:8px}
-  .status.err{color:var(--err)}
-  .hist{margin-top:12px}
-  .item{border-top:1px solid var(--line);padding:8px 2px}
-  .item .t{font-size:1.05rem}
-  .item .e{color:var(--muted);font-size:.82rem}
+  :root{
+    --bg:#07080c;
+    --glass:rgba(255,255,255,.045);
+    --glass2:rgba(255,255,255,.08);
+    --stroke:rgba(255,255,255,.09);
+    --text:#f4f5f7;
+    --muted:#8b92a3;
+    --accent:#3ddc84;
+    --accent-dim:rgba(61,220,132,.16);
+    --box:#ffb547;
+    --err:#ff6b6b;
+    --sub-size:26px;
+    --safe-t:env(safe-area-inset-top); --safe-b:env(safe-area-inset-bottom);
+    --safe-l:env(safe-area-inset-left); --safe-r:env(safe-area-inset-right);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Sarabun",system-ui,sans-serif;overflow:hidden}
+  body{
+    background:
+      radial-gradient(1200px 600px at 10% -10%, rgba(61,220,132,.10), transparent 60%),
+      radial-gradient(900px 500px at 110% 110%, rgba(255,181,71,.07), transparent 60%),
+      var(--bg);
+  }
+  button{font-family:"Prompt",sans-serif;color:var(--text);border:0;cursor:pointer}
+
+  /* ---------- layout ---------- */
+  .app{
+    height:100dvh;display:grid;gap:12px;
+    padding:calc(var(--safe-t) + 10px) calc(var(--safe-r) + 12px) calc(var(--safe-b) + 12px) calc(var(--safe-l) + 12px);
+    grid-template-columns:1fr;
+    grid-template-rows:auto auto auto 1fr;
+    grid-template-areas:"top" "stage" "sub" "hist";
+  }
+  .top{grid-area:top}
+  .stage{grid-area:stage}
+  .subcard{grid-area:sub}
+  .hist{grid-area:hist}
+
+  @media (orientation:landscape) and (max-height:600px), (orientation:landscape) and (min-width:900px){
+    .app{
+      grid-template-columns:minmax(0,1.35fr) minmax(280px,1fr);
+      grid-template-rows:auto auto 1fr;
+      grid-template-areas:"stage top" "stage sub" "stage hist";
+    }
+    .stage{aspect-ratio:auto !important;height:100%}
+  }
+
+  /* ---------- top bar ---------- */
+  .top{display:flex;align-items:center;gap:10px}
+  .brand{display:flex;align-items:center;gap:10px;flex:1;min-width:0}
+  .logo{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;
+        background:linear-gradient(135deg,#3ddc84,#1a9e5a);box-shadow:0 6px 18px rgba(61,220,132,.35);font-size:18px}
+  .brand h1{font-family:"Prompt",sans-serif;font-size:1.08rem;font-weight:600;margin:0;white-space:nowrap}
+  .pill{display:inline-flex;align-items:center;gap:7px;padding:6px 11px;border-radius:999px;background:var(--glass);border:1px solid var(--stroke);
+        font-size:.78rem;color:var(--muted);white-space:nowrap;max-width:46vw;overflow:hidden;text-overflow:ellipsis}
+  .dot{width:8px;height:8px;border-radius:50%;background:#555b68;flex:none}
+  .pill.live .dot{background:var(--accent);box-shadow:0 0 0 0 rgba(61,220,132,.6);animation:pulse 1.6s infinite}
+  .pill.busy .dot{background:var(--box)}
+  .pill.err{color:#ffb3b3}.pill.err .dot{background:var(--err)}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(61,220,132,.55)}70%{box-shadow:0 0 0 8px rgba(61,220,132,0)}100%{box-shadow:0 0 0 0 rgba(61,220,132,0)}}
+  .icon-btn{width:40px;height:40px;border-radius:12px;background:var(--glass);border:1px solid var(--stroke);display:grid;place-items:center;font-size:18px;flex:none}
+  .icon-btn:active{transform:scale(.94)}
+
+  /* ---------- camera stage ---------- */
+  .stage{position:relative;border-radius:20px;overflow:hidden;background:#000;border:1px solid var(--stroke);
+         aspect-ratio:16/9;min-height:0;box-shadow:0 20px 50px rgba(0,0,0,.45)}
+  video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000}
+  .placeholder{position:absolute;inset:0;display:grid;place-items:start center;padding-top:9% !important;text-align:center;padding:20px;color:var(--muted);
+               background:repeating-linear-gradient(45deg,rgba(255,255,255,.015) 0 12px,transparent 12px 24px)}
+  .placeholder .big{font-size:38px;margin-bottom:6px}
+  .placeholder p{margin:0;font-size:.92rem;line-height:1.5}
+
+  .box{position:absolute;border:2px solid var(--box);border-radius:10px;touch-action:none;cursor:move;
+       box-shadow:0 0 0 2000px rgba(0,0,0,.45);transition:border-color .2s}
+  .box.dragging{border-color:#fff}
+  .box .tag{position:absolute;left:8px;top:6px;opacity:.92;font-family:"Prompt",sans-serif;font-size:.72rem;font-weight:600;
+            background:var(--box);color:#2a1a00;padding:3px 8px;border-radius:7px;white-space:nowrap;pointer-events:none}
+    .h{position:absolute;width:30px;height:30px;touch-action:none}
+  .h::after{content:"";position:absolute;width:14px;height:14px;border-radius:50%;background:#fff;border:3px solid var(--box);
+            box-shadow:0 2px 8px rgba(0,0,0,.5)}
+  .h.nw{left:-15px;top:-15px;cursor:nwse-resize}.h.nw::after{left:8px;top:8px}
+  .h.ne{right:-15px;top:-15px;cursor:nesw-resize}.h.ne::after{left:8px;top:8px}
+  .h.sw{left:-15px;bottom:-15px;cursor:nesw-resize}.h.sw::after{left:8px;top:8px}
+  .h.se{right:-15px;bottom:-15px;cursor:nwse-resize}.h.se::after{left:8px;top:8px}
+
+  .fab{position:absolute;right:12px;top:12px;display:flex;gap:8px;z-index:3}
+  .start{display:inline-flex;align-items:center;gap:8px;padding:10px 18px;border-radius:14px;font-weight:600;font-size:1rem;
+         background:linear-gradient(135deg,#3ddc84,#22b366);color:#04140a;box-shadow:0 8px 24px rgba(61,220,132,.35)}
+  .start.stop{background:rgba(20,22,28,.85);color:var(--text);border:1px solid var(--stroke);box-shadow:none;backdrop-filter:blur(10px)}
+  .start:active{transform:scale(.97)}
+  .start[disabled]{opacity:.6}
+
+  /* ---------- subtitle card ---------- */
+  .subcard{position:relative;border-radius:20px;padding:16px 18px;min-height:110px;
+           background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.025));border:1px solid var(--stroke);
+           backdrop-filter:blur(14px);display:flex;flex-direction:column;justify-content:center;transition:opacity .5s}
+  .subcard.faded{opacity:.5}
+  .subcard .label{position:absolute;top:10px;left:18px;font-size:.7rem;letter-spacing:.08em;color:var(--accent);font-family:"Prompt",sans-serif;font-weight:600}
+  .th{font-family:"Prompt",sans-serif;font-weight:500;font-size:var(--sub-size);line-height:1.45;margin-top:12px;
+      text-shadow:0 2px 12px rgba(0,0,0,.4);word-break:break-word}
+  .th.idle{font-size:1rem;color:var(--muted);font-weight:400}
+  .en{color:var(--muted);font-size:.9rem;margin-top:6px;font-style:italic}
+  .raw{display:none;font-size:.72rem;color:#c9a25a;margin-top:8px;font-family:monospace;word-break:break-all}
+  body.dbg .raw{display:block}
+  .subcard.flash{animation:flash .5s ease}
+  @keyframes flash{0%{box-shadow:0 0 0 0 rgba(61,220,132,.45)}100%{box-shadow:0 0 0 14px rgba(61,220,132,0)}}
+
+  /* ---------- history ---------- */
+  .hist{min-height:0;display:flex;flex-direction:column;border-radius:20px;background:var(--glass);border:1px solid var(--stroke);overflow:hidden}
+  .hist-head{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--stroke)}
+  .hist-head span{font-family:"Prompt",sans-serif;font-size:.85rem;color:var(--muted)}
+  .link{background:none;color:var(--muted);font-size:.8rem;padding:4px 8px;border-radius:8px}
+  .list{overflow-y:auto;padding:4px 16px 12px;-webkit-overflow-scrolling:touch}
+  .item{padding:10px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+  .item:last-child{border-bottom:0}
+  .item .t{font-size:1.02rem;line-height:1.5}
+  .item .e{font-size:.8rem;color:var(--muted);margin-top:2px}
+  .item .time{font-size:.7rem;color:#5d6373;float:right;margin-left:8px}
+  .empty{color:#5d6373;text-align:center;padding:22px 0;font-size:.9rem}
   body.hide-en .en, body.hide-en .item .e{display:none}
+
+  /* ---------- settings sheet ---------- */
+  .scrim{position:fixed;inset:0;background:rgba(0,0,0,.55);opacity:0;pointer-events:none;transition:opacity .25s;z-index:10}
+  .sheet{position:fixed;left:50%;bottom:0;transform:translate(-50%,105%);width:min(560px,100%);max-height:88dvh;overflow-y:auto;
+         background:#12141b;border:1px solid var(--stroke);border-bottom:0;border-radius:24px 24px 0 0;z-index:11;
+         padding:10px 20px calc(var(--safe-b) + 22px);transition:transform .3s cubic-bezier(.2,.8,.2,1)}
+  .open .scrim{opacity:1;pointer-events:auto}
+  .open .sheet{transform:translate(-50%,0)}
+  .grab{width:44px;height:5px;border-radius:9px;background:#333846;margin:4px auto 14px}
+  .sheet h2{font-family:"Prompt",sans-serif;font-size:1.15rem;margin:0 0 4px}
+  .sheet .hint{color:var(--muted);font-size:.85rem;margin:0 0 14px}
+  .field{margin:16px 0}
+  .field label{display:flex;justify-content:space-between;font-size:.88rem;color:#c6cad3;margin-bottom:8px}
+  .field label b{color:var(--accent);font-weight:600}
+  .field input[type=text]{width:100%;padding:13px 14px;border-radius:12px;border:1px solid var(--stroke);background:#0b0c11;color:var(--text);font-size:.88rem}
+  .field input[type=text]:focus{outline:none;border-color:var(--accent)}
+  .field small{display:block;color:var(--muted);font-size:.78rem;margin-top:6px;line-height:1.5}
+  input[type=range]{width:100%;accent-color:var(--accent);height:28px}
+  .sw{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid var(--stroke);font-size:.92rem}
+  .sw input{appearance:none;width:46px;height:28px;border-radius:99px;background:#2a2e39;position:relative;transition:background .2s;flex:none}
+  .sw input::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:left .2s}
+  .sw input:checked{background:var(--accent)}
+  .sw input:checked::after{left:21px}
+  #dbg{display:none;width:100%;border-radius:10px;background:#fff;margin-top:8px}
+  .done{width:100%;margin-top:16px;padding:14px;border-radius:14px;font-weight:600;font-size:1rem;background:var(--accent);color:#04140a}
+  .ok{color:var(--accent)} .bad{color:var(--err)}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <h1>🎮 ซับไทยสด</h1>
+<div class="app" id="app">
 
-  <div class="cam" id="camWrap">
+  <header class="top">
+    <div class="brand">
+      <div class="logo">🎮</div>
+      <h1>ซับไทยสด</h1>
+    </div>
+    <div class="pill" id="pill"><span class="dot"></span><span id="pillText">พร้อม</span></div>
+    <button class="icon-btn" id="openSettings" aria-label="ตั้งค่า">⚙️</button>
+  </header>
+
+  <section class="stage" id="stage">
     <video id="video" playsinline muted autoplay></video>
-    <div class="box" id="box"></div>
-  </div>
+    <div class="placeholder" id="placeholder">
+      <div>
+        <div class="big">📺</div>
+        <p>กด <b>เริ่ม</b> แล้วหันกล้องไปที่ทีวี<br>ลากกรอบสีส้มให้ครอบซับในเกม</p>
+      </div>
+    </div>
+    <div class="box" id="box">
+      <span class="tag">ลากย้าย · ดึงมุมปรับขนาด</span>
+      <div class="h nw" data-h="nw"></div><div class="h ne" data-h="ne"></div>
+      <div class="h sw" data-h="sw"></div><div class="h se" data-h="se"></div>
+    </div>
+    <div class="fab">
+      <button class="start" id="startBtn">▶ เริ่ม</button>
+    </div>
+  </section>
 
-  <div class="sub" id="subBox">
-    <div class="th" id="curTh">กด "เริ่ม" แล้วหันกล้องไปที่ทีวี ให้ซับอยู่ในกรอบสีเหลือง</div>
+  <section class="subcard" id="subcard">
+    <span class="label">คำแปล</span>
+    <div class="th idle" id="curTh">คำแปลภาษาไทยจะขึ้นตรงนี้</div>
     <div class="en" id="curEn"></div>
+    <div class="raw" id="raw"></div>
+  </section>
+
+  <section class="hist">
+    <div class="hist-head"><span>ประวัติบทพูด</span><button class="link" id="clearBtn">ล้าง</button></div>
+    <div class="list" id="list"><div class="empty" id="empty">ยังไม่มีบทพูด</div></div>
+  </section>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<div class="sheet" id="sheet" role="dialog" aria-label="ตั้งค่า">
+  <div class="grab"></div>
+  <h2>ตั้งค่า</h2>
+  <p class="hint">ค่าทั้งหมดจะถูกจำไว้ในมือถือเครื่องนี้</p>
+
+  <div class="field">
+    <label>ลิงก์ตัวแปล (Apps Script) <span id="urlState"></span></label>
+    <input type="text" id="apiUrl" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off" autocapitalize="off" spellcheck="false">
+    <small>วางลิงก์ที่ลงท้ายด้วย /exec</small>
   </div>
 
-  <div class="bar">
-    <button class="main" id="startBtn">▶ เริ่ม</button>
-    <button id="clearBtn">ล้างประวัติ</button>
+  <div class="field">
+    <label>ขนาดตัวอักษรคำแปล <b id="sizeV"></b></label>
+    <input type="range" id="size" min="18" max="44" value="26">
   </div>
-  <div class="status" id="status"></div>
 
-  <details id="settings">
-    <summary>⚙️ ตั้งค่า</summary>
-    <label>ลิงก์ Apps Script (ที่ลงท้ายด้วย /exec)</label>
-    <input type="text" id="apiUrl" placeholder="https://script.google.com/macros/s/xxxx/exec">
-
-    <label>ขอบบนของกรอบซับ: <span id="topV"></span>%</label>
-    <input type="range" id="top" min="0" max="95" value="70">
-    <label>ขอบล่างของกรอบซับ: <span id="botV"></span>%</label>
-    <input type="range" id="bot" min="5" max="100" value="95">
-
-    <label>ความสว่างขั้นต่ำของตัวหนังสือ: <span id="thrV"></span> (ซับเป็นตัวขาว ถ้าอ่านไม่ออกให้ลองปรับ)</label>
+  <div class="sw" style="border-top:0"><span>ปรับความสว่างอัตโนมัติ <small style="color:var(--muted)">(แนะนำ)</small></span><input type="checkbox" id="auto" checked></div>
+  <div class="field" id="thrField">
+    <label>ความสว่างของตัวหนังสือซับ <b id="thrV"></b></label>
     <input type="range" id="thr" min="80" max="240" value="165">
+    <small>เปิด "ดูภาพที่เว็บอ่านได้" ด้านล่างเพื่อช่วยปรับ: ถ้ามีจุดดำเลอะเยอะ ให้เลื่อนค่าขึ้น ถ้าตัวหนังสือจางหรือขาด ให้เลื่อนค่าลง</small>
+  </div>
 
-    <label>อ่านจอทุกกี่วินาที: <span id="intV"></span></label>
-    <input type="range" id="int" min="0.5" max="3" step="0.25" value="1.25">
+  <div class="field">
+    <label>พักระหว่างการอ่านแต่ละรอบ <b id="intV"></b></label>
+    <input type="range" id="int" min="0.2" max="2" step="0.1" value="0.4">
+  </div>
 
-    <label class="chk"><input type="checkbox" id="showEn" checked> แสดงภาษาอังกฤษด้วย</label>
-    <label class="chk"><input type="checkbox" id="showDbg"> แสดงภาพที่เว็บอ่านได้ (ไว้ปรับค่า)</label>
-    <canvas id="dbg" style="display:none"></canvas>
-  </details>
+  <div class="sw"><span>แสดงภาษาอังกฤษต้นฉบับ</span><input type="checkbox" id="showEn" checked></div>
+  <div class="sw"><span>ดูภาพที่เว็บอ่านได้</span><input type="checkbox" id="showDbg"></div>
+  <canvas id="dbg"></canvas>
 
-  <div class="hist" id="hist"></div>
+  <button class="done" id="closeSettings">เสร็จ</button>
 </div>
 
 <script>
 (() => {
   const $ = id => document.getElementById(id);
-  const video = $("video");
+  const video = $("video"), stage = $("stage"), boxEl = $("box");
+  let running = false;
   const work = document.createElement("canvas");
   const wctx = work.getContext("2d", { willReadFrequently: true });
 
-  // ---------- settings (saved in this browser) ----------
+  // ---------- storage ----------
   const store = {
-    get(k, d){ try{ const v = localStorage.getItem("ls_"+k); return v===null? d : v; }catch(e){ return d; } },
-    set(k, v){ try{ localStorage.setItem("ls_"+k, v); }catch(e){} }
+    get(k, d){ try{ const v = localStorage.getItem("ls2_"+k); return v === null ? d : v; }catch(e){ return d; } },
+    set(k, v){ try{ localStorage.setItem("ls2_"+k, v); }catch(e){} }
   };
-  const fields = ["apiUrl","top","bot","thr","int"];
-  fields.forEach(f => { const v = store.get(f, null); if (v!==null) $(f).value = v; });
-  $("showEn").checked = store.get("showEn","1")==="1";
-  if (!$("apiUrl").value) $("settings").open = true;
+  try { const old = localStorage.getItem("ls_apiUrl"); if (old && !store.get("apiUrl", "")) store.set("apiUrl", old); } catch(e){}
 
-  function syncUI(){
-    let t = +$("top").value, b = +$("bot").value;
-    if (b <= t + 4) { b = Math.min(100, t + 5); $("bot").value = b; }
-    $("topV").textContent = t; $("botV").textContent = b;
-    $("thrV").textContent = $("thr").value; $("intV").textContent = $("int").value;
-    $("box").style.top = t + "%"; $("box").style.height = (b - t) + "%";
+  // ---------- settings ----------
+  const ranges = ["size","thr","int"];
+  $("apiUrl").value = store.get("apiUrl", "");
+  ranges.forEach(f => { const v = store.get(f === "int" ? "int2" : f, null); if (v !== null) $(f).value = v; });
+  $("auto").checked = store.get("auto","1") === "1";
+  $("showEn").checked = store.get("showEn","1") === "1";
+
+  const urlOk = () => /^https:\/\/script\.google\.com\/.+\/exec$/.test($("apiUrl").value.trim());
+  function syncSettings(){
+    $("sizeV").textContent = $("size").value + " px";
+    $("thrV").textContent = $("thr").value;
+    $("intV").textContent = $("int").value + " วินาที";
+    document.documentElement.style.setProperty("--sub-size", $("size").value + "px");
     document.body.classList.toggle("hide-en", !$("showEn").checked);
     $("dbg").style.display = $("showDbg").checked ? "block" : "none";
+    document.body.classList.toggle("dbg", $("showDbg").checked);
+    $("thr").disabled = $("auto").checked;
+    $("thrField").style.opacity = $("auto").checked ? .45 : 1;
+    if ($("auto").checked && !running) $("thrV").textContent = "อัตโนมัติ";
+    const v = $("apiUrl").value.trim();
+    $("urlState").innerHTML = !v ? "" : urlOk() ? '<span class="ok">✓ ถูกต้อง</span>' : '<span class="bad">ลิงก์ไม่ถูกต้อง</span>';
   }
-  fields.forEach(f => $(f).addEventListener("input", () => { store.set(f, $(f).value.trim()); syncUI(); }));
-  $("showEn").addEventListener("change", () => { store.set("showEn", $("showEn").checked?"1":"0"); syncUI(); });
-  $("showDbg").addEventListener("change", syncUI);
-  syncUI();
+  $("apiUrl").addEventListener("input", () => { store.set("apiUrl", $("apiUrl").value.trim()); syncSettings(); });
+  ranges.forEach(f => $(f).addEventListener("input", () => { store.set(f === "int" ? "int2" : f, $(f).value); syncSettings(); }));
+  $("showEn").addEventListener("change", () => { store.set("showEn", $("showEn").checked ? "1" : "0"); syncSettings(); });
+  $("showDbg").addEventListener("change", syncSettings);
+  $("auto").addEventListener("change", () => { store.set("auto", $("auto").checked ? "1" : "0"); syncSettings(); });
+  syncSettings();
 
-  function status(msg, err){ $("status").textContent = msg || ""; $("status").className = "status" + (err ? " err" : ""); }
+  const openSheet = () => document.body.classList.add("open");
+  const closeSheet = () => document.body.classList.remove("open");
+  $("openSettings").addEventListener("click", openSheet);
+  $("closeSettings").addEventListener("click", closeSheet);
+  $("scrim").addEventListener("click", closeSheet);
+  if (!urlOk()) setTimeout(openSheet, 400);
+
+  // ---------- status pill ----------
+  function status(text, kind){
+    $("pillText").textContent = text;
+    $("pill").className = "pill" + (kind ? " " + kind : "");
+  }
+
+  // ---------- adjustable box (fractions of the video picture) ----------
+  let box = { x: 0.05, y: 0.72, w: 0.90, h: 0.22 };
+  try { const b = JSON.parse(store.get("box", "null")); if (b && b.w > 0 && b.h > 0) box = b; } catch(e){}
+
+  function contentRect(){
+    const ew = stage.clientWidth, eh = stage.clientHeight;
+    const ar = (video.videoWidth && video.videoHeight) ? video.videoWidth / video.videoHeight : 16/9;
+    let w, h;
+    if (ew / eh > ar){ h = eh; w = eh * ar; } else { w = ew; h = ew / ar; }
+    return { x: (ew - w) / 2, y: (eh - h) / 2, w, h };
+  }
+  function placeBox(){
+    const r = contentRect();
+    boxEl.style.left = (r.x + box.x * r.w) + "px";
+    boxEl.style.top = (r.y + box.y * r.h) + "px";
+    boxEl.style.width = (box.w * r.w) + "px";
+    boxEl.style.height = (box.h * r.h) + "px";
+    boxEl.classList.toggle("low", box.y < 0.12);
+  }
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const MINW = 0.12, MINH = 0.06;
+
+  let drag = null;
+  boxEl.addEventListener("pointerdown", e => {
+    e.preventDefault();
+    const handle = e.target.dataset && e.target.dataset.h ? e.target.dataset.h : "move";
+    drag = { id: e.pointerId, mode: handle, sx: e.clientX, sy: e.clientY, start: { ...box }, r: contentRect() };
+    boxEl.setPointerCapture(e.pointerId);
+    boxEl.classList.add("dragging");
+  });
+  boxEl.addEventListener("pointermove", e => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const dx = (e.clientX - drag.sx) / drag.r.w, dy = (e.clientY - drag.sy) / drag.r.h;
+    const s = drag.start;
+    let { x, y, w, h } = s;
+    if (drag.mode === "move"){
+      x = clamp(s.x + dx, 0, 1 - s.w); y = clamp(s.y + dy, 0, 1 - s.h);
+    } else {
+      let left = s.x, top = s.y, right = s.x + s.w, bottom = s.y + s.h;
+      if (drag.mode.includes("w")) left = clamp(s.x + dx, 0, right - MINW);
+      if (drag.mode.includes("e")) right = clamp(right + dx, left + MINW, 1);
+      if (drag.mode.includes("n")) top = clamp(s.y + dy, 0, bottom - MINH);
+      if (drag.mode.includes("s")) bottom = clamp(bottom + dy, top + MINH, 1);
+      x = left; y = top; w = right - left; h = bottom - top;
+    }
+    box = { x, y, w, h };
+    placeBox();
+  });
+  const endDrag = e => {
+    if (!drag || e.pointerId !== drag.id) return;
+    drag = null; boxEl.classList.remove("dragging");
+    store.set("box", JSON.stringify(box));
+  };
+  boxEl.addEventListener("pointerup", endDrag);
+  boxEl.addEventListener("pointercancel", endDrag);
+
+  new ResizeObserver(placeBox).observe(stage);
+  window.addEventListener("orientationchange", () => setTimeout(placeBox, 300));
+  video.addEventListener("loadedmetadata", placeBox);
+  placeBox();
 
   // ---------- text helpers ----------
   function cleanText(raw){
@@ -122,31 +362,29 @@
       .filter(l => {
         if (l.length < 3) return false;
         const letters = (l.match(/[A-Za-z]/g) || []).length;
-        return letters / l.replace(/\s/g,"").length > 0.6;
+        return letters / l.replace(/\s/g, "").length > 0.6;
       });
-    let t = lines.join(" ").replace(/\s+/g, " ").trim();
-    const words = t.split(" ").filter(w => /[A-Za-z]{2,}/.test(w));
-    return words.length >= 2 ? t : "";
+    const t = lines.join(" ").replace(/\s+/g, " ").trim();
+    return t.split(" ").filter(w => /[A-Za-z]{2,}/.test(w)).length >= 2 ? t : "";
   }
-  function norm(s){ return s.toLowerCase().replace(/[^a-z0-9 ]/g, "").replace(/\s+/g, " ").trim(); }
-  function similar(a, b){ // Dice coefficient on character bigrams
+  const norm = s => s.toLowerCase().replace(/[^a-z0-9 ]/g, "").replace(/\s+/g, " ").trim();
+  function similar(a, b){
     a = norm(a); b = norm(b);
     if (!a || !b) return 0;
     if (a === b) return 1;
-    const grams = s => { const m = new Map(); for (let i=0;i<s.length-1;i++){ const g=s.substr(i,2); m.set(g,(m.get(g)||0)+1);} return m; };
+    const grams = s => { const m = new Map(); for (let i = 0; i < s.length - 1; i++){ const g = s.substr(i, 2); m.set(g, (m.get(g) || 0) + 1); } return m; };
     const A = grams(a), B = grams(b); let inter = 0, total = 0;
-    A.forEach((n,g) => { inter += Math.min(n, B.get(g)||0); total += n; });
+    A.forEach((n, g) => { inter += Math.min(n, B.get(g) || 0); total += n; });
     B.forEach(n => total += n);
-    return total ? 2*inter/total : 0;
+    return total ? 2 * inter / total : 0;
   }
 
   // ---------- translation ----------
   const cache = new Map();
   async function translate(text){
     if (cache.has(text)) return cache.get(text);
-    const url = $("apiUrl").value.trim();
-    if (!/^https:\/\/script\.google\.com\/.+\/exec$/.test(url)) throw new Error("ยังไม่ได้ใส่ลิงก์ Apps Script ที่ถูกต้องในตั้งค่า");
-    const res = await fetch(url + "?q=" + encodeURIComponent(text));
+    if (!urlOk()) throw new Error("ยังไม่ได้ใส่ลิงก์ตัวแปล");
+    const res = await fetch($("apiUrl").value.trim() + "?q=" + encodeURIComponent(text));
     const data = await res.json();
     if (data.error) throw new Error(data.error);
     cache.set(text, data.th);
@@ -156,38 +394,59 @@
   // ---------- display ----------
   let fadeTimer = null;
   function show(en, th){
-    $("curTh").textContent = th; $("curEn").textContent = en;
-    $("subBox").classList.remove("faded");
+    const thEl = $("curTh");
+    thEl.classList.remove("idle");
+    thEl.textContent = th; $("curEn").textContent = en;
+    const card = $("subcard");
+    card.classList.remove("faded", "flash"); void card.offsetWidth; card.classList.add("flash");
     clearTimeout(fadeTimer);
-    fadeTimer = setTimeout(() => $("subBox").classList.add("faded"), 7000);
+    fadeTimer = setTimeout(() => card.classList.add("faded"), 8000);
+
+    addHistory(en, th);
+  }
+  function addHistory(en, th){
+    $("empty") && $("empty").remove();
     const it = document.createElement("div");
     it.className = "item";
-    it.innerHTML = '<div class="t"></div><div class="e"></div>';
+    const time = new Date().toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" });
+    it.innerHTML = '<span class="time"></span><div class="t"></div><div class="e"></div>';
+    it.querySelector(".time").textContent = time;
     it.querySelector(".t").textContent = th;
     it.querySelector(".e").textContent = en;
-    $("hist").prepend(it);
-    while ($("hist").children.length > 200) $("hist").lastChild.remove();
+    $("list").prepend(it);
+    while ($("list").children.length > 200) $("list").lastChild.remove();
   }
-  $("clearBtn").addEventListener("click", () => { $("hist").innerHTML = ""; });
+  $("clearBtn").addEventListener("click", () => { $("list").innerHTML = '<div class="empty" id="empty">ยังไม่มีบทพูด</div>'; });
 
-  // ---------- capture + OCR loop ----------
-  let worker = null, running = false, timer = null, busy = false;
+  // ---------- capture + OCR ----------
+  let worker = null, timer = null;
   let lastRead = "", lastSent = "", wakeLock = null;
 
-  function grabSubtitleArea(){
+  function grabArea(){
     const vw = video.videoWidth, vh = video.videoHeight;
     if (!vw || !vh) return null;
-    const t = +$("top").value / 100, b = +$("bot").value / 100;
-    const sx = Math.round(vw * 0.05), sw = Math.round(vw * 0.90);
-    const sy = Math.round(vh * t), sh = Math.max(10, Math.round(vh * (b - t)));
-    const scale = Math.min(2, 1600 / sw);
-    work.width = Math.round(sw * scale); work.height = Math.round(sh * scale);
+    const sx = Math.round(box.x * vw), sy = Math.round(box.y * vh);
+    const sw = Math.max(10, Math.round(box.w * vw)), sh = Math.max(10, Math.round(box.h * vh));
+    // small image = fast reading on phones
+    const scale = Math.min(2, 1000 / sw, 220 / sh);
+    work.width = Math.max(1, Math.round(sw * scale)); work.height = Math.max(1, Math.round(sh * scale));
     wctx.drawImage(video, sx, sy, sw, sh, 0, 0, work.width, work.height);
-    // keep bright (white) text as black on white background
-    const img = wctx.getImageData(0, 0, work.width, work.height), d = img.data, thr = +$("thr").value;
-    for (let i = 0; i < d.length; i += 4){
-      const lum = 0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2];
-      const v = lum >= thr ? 0 : 255;
+    const img = wctx.getImageData(0, 0, work.width, work.height), d = img.data;
+    const n = d.length / 4, lum = new Uint8ClampedArray(n), hist = new Uint32Array(256);
+    for (let i = 0, j = 0; i < d.length; i += 4, j++){
+      const L = 0.299 * d[i] + 0.587 * d[i+1] + 0.114 * d[i+2];
+      lum[j] = L; hist[lum[j]]++;
+    }
+    let thr = +$("thr").value;
+    if ($("auto").checked){
+      // subtitles are the brightest pixels: take the brightest ~9% as text
+      let acc = 0, t = 255;
+      while (t > 0 && acc < n * 0.09){ acc += hist[t]; t--; }
+      thr = Math.max(110, Math.min(245, t - 8));
+      $("thrV").textContent = "อัตโนมัติ (" + thr + ")";
+    }
+    for (let i = 0, j = 0; i < d.length; i += 4, j++){
+      const v = lum[j] >= thr ? 0 : 255;
       d[i] = d[i+1] = d[i+2] = v; d[i+3] = 255;
     }
     wctx.putImageData(img, 0, 0);
@@ -198,51 +457,54 @@
     return work;
   }
 
+  let seq = 0;
+  function translateLater(text){
+    // runs in the background so reading the screen never waits for the translator
+    const my = ++seq;
+    $("curEn").textContent = text;
+    $("curTh").classList.add("idle"); $("curTh").textContent = "กำลังแปล…";
+    translate(text).then(th => {
+      if (my !== seq) { addHistory(text, th); return; }
+      show(text, th);
+      status("กำลังอ่านซับ", "live");
+    }).catch(e => status(e.message || "แปลไม่สำเร็จ", "err"));
+  }
+
   async function tick(){
     if (!running) return;
-    if (!busy){
-      busy = true;
-      try{
-        const c = grabSubtitleArea();
-        if (c){
-          const { data } = await worker.recognize(c);
-          const text = cleanText(data.text || "");
-          if (text){
-            // translate only when the same line was read twice in a row (avoids half-read junk)
-            // and it is different from the line already translated
-            const stable = similar(text, lastRead) > 0.8;
-            lastRead = text;
-            if (stable && similar(text, lastSent) < 0.8){
-              lastSent = text;
-              status("กำลังแปล…");
-              const th = await translate(text);
-              show(text, th);
-              status("กำลังอ่านซับ…");
-            }
-          } else {
-            lastRead = "";
-          }
+    const t0 = performance.now();
+    try{
+      const c = grabArea();
+      if (c){
+        const { data } = await worker.recognize(c);
+        const conf = data.confidence || 0;
+        const text = conf >= 45 ? cleanText(data.text || "") : "";
+        if ($("showDbg").checked) $("raw").textContent = "อ่านได้ (" + Math.round(conf) + "%): " + (data.text || "").replace(/\s+/g, " ").trim();
+        if (text && similar(text, lastSent) < 0.75){
+          lastSent = text;
+          translateLater(text);
         }
-      } catch(e){
-        status("⚠️ " + (e.message || e), true);
-      } finally {
-        busy = false;
+        const ms = Math.round(performance.now() - t0);
+        if (!$("pill").classList.contains("err") || text) status("อ่านซับ · " + (ms / 1000).toFixed(1) + " วิ", "live");
       }
+    } catch(e){
+      status(e.message || "เกิดข้อผิดพลาด", "err");
     }
-    timer = setTimeout(tick, +$("int").value * 1000);
+    if (running) timer = setTimeout(tick, +$("int").value * 1000);
   }
 
   async function start(){
-    if (!$("apiUrl").value.trim()){ $("settings").open = true; status("ใส่ลิงก์ Apps Script ในตั้งค่าก่อน", true); return; }
-    $("startBtn").disabled = true;
+    if (!urlOk()){ openSheet(); status("ใส่ลิงก์ตัวแปลก่อน", "err"); return; }
+    const btn = $("startBtn"); btn.disabled = true;
     try{
-      status("กำลังเปิดกล้อง…");
+      status("กำลังเปิดกล้อง…", "busy");
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false
       });
       video.srcObject = stream; await video.play();
+      $("placeholder").style.display = "none";
       if (!worker){
-        status("กำลังโหลดตัวอ่านตัวอักษร (ครั้งแรกอาจใช้เวลาสักครู่)…");
+        status("กำลังโหลดตัวอ่าน…", "busy");
         worker = await Tesseract.createWorker("eng");
         await worker.setParameters({
           tessedit_pageseg_mode: "6",
@@ -250,23 +512,24 @@
         });
       }
       try { if ("wakeLock" in navigator) wakeLock = await navigator.wakeLock.request("screen"); } catch(e){}
-      running = true; status("กำลังอ่านซับ…");
-      $("startBtn").textContent = "⏸ หยุด";
+      running = true;
+      btn.textContent = "■ หยุด"; btn.classList.add("stop");
+      status("กำลังอ่านซับ", "live");
       tick();
     } catch(e){
-      status("เปิดกล้องไม่ได้: " + (e.message || e) + " (ต้องกดอนุญาตกล้อง และเปิดเว็บผ่าน https)", true);
-    } finally {
-      $("startBtn").disabled = false;
-    }
+      status("เปิดกล้องไม่ได้ ลองกดอนุญาตกล้อง", "err");
+    } finally { btn.disabled = false; }
   }
 
   function stop(){
     running = false; clearTimeout(timer);
     const s = video.srcObject; if (s) s.getTracks().forEach(t => t.stop());
     video.srcObject = null;
+    $("placeholder").style.display = "";
     try { wakeLock && wakeLock.release(); } catch(e){}
     wakeLock = null;
-    $("startBtn").textContent = "▶ เริ่ม"; status("หยุดแล้ว");
+    const btn = $("startBtn"); btn.textContent = "▶ เริ่ม"; btn.classList.remove("stop");
+    status("หยุดแล้ว");
   }
 
   $("startBtn").addEventListener("click", () => running ? stop() : start());
