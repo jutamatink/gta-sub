@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ซับไทยสด</title>
+<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600&family=Sarabun:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<style>
+  :root{--bg:#0b0c10;--panel:#161820;--line:#2a2e39;--text:#f3f3f5;--muted:#9097a5;--accent:#7bd389;--warn:#f2c14e;--err:#ff7a7a}
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--text);font-family:"Sarabun",system-ui,sans-serif}
+  body{padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+  .wrap{max-width:900px;margin:0 auto;padding:12px}
+  h1{font-family:"Prompt",sans-serif;font-size:1.2rem;margin:4px 0 10px}
+  .cam{position:relative;border-radius:12px;overflow:hidden;background:#000;border:1px solid var(--line)}
+  video{display:block;width:100%;height:auto}
+  .box{position:absolute;left:5%;right:5%;border:2px dashed var(--warn);border-radius:6px;pointer-events:none;box-shadow:0 0 0 9999px rgba(0,0,0,.35)}
+  .sub{margin-top:12px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;min-height:96px;transition:opacity .4s}
+  .th{font-family:"Prompt",sans-serif;font-size:1.55rem;line-height:1.45}
+  .en{color:var(--muted);font-size:.95rem;margin-top:4px}
+  .faded{opacity:.45}
+  .bar{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  button{border:0;border-radius:12px;padding:12px 16px;font-family:"Prompt",sans-serif;font-size:1rem;font-weight:600;cursor:pointer;background:#232733;color:var(--text)}
+  button.main{background:var(--accent);color:#08180c;flex:1}
+  details{margin-top:12px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px}
+  summary{cursor:pointer;font-family:"Prompt",sans-serif}
+  label{display:block;margin:10px 0 4px;color:var(--muted);font-size:.9rem}
+  input[type=text]{width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);background:#0f1116;color:var(--text);font-size:.9rem}
+  input[type=range]{width:100%;accent-color:var(--accent)}
+  .chk{display:flex;align-items:center;gap:8px;color:var(--text)}
+  #dbg{display:block;max-width:100%;margin-top:8px;border-radius:6px;background:#fff}
+  .status{font-size:.85rem;color:var(--muted);margin-top:8px}
+  .status.err{color:var(--err)}
+  .hist{margin-top:12px}
+  .item{border-top:1px solid var(--line);padding:8px 2px}
+  .item .t{font-size:1.05rem}
+  .item .e{color:var(--muted);font-size:.82rem}
+  body.hide-en .en, body.hide-en .item .e{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🎮 ซับไทยสด</h1>
+
+  <div class="cam" id="camWrap">
+    <video id="video" playsinline muted autoplay></video>
+    <div class="box" id="box"></div>
+  </div>
+
+  <div class="sub" id="subBox">
+    <div class="th" id="curTh">กด "เริ่ม" แล้วหันกล้องไปที่ทีวี ให้ซับอยู่ในกรอบสีเหลือง</div>
+    <div class="en" id="curEn"></div>
+  </div>
+
+  <div class="bar">
+    <button class="main" id="startBtn">▶ เริ่ม</button>
+    <button id="clearBtn">ล้างประวัติ</button>
+  </div>
+  <div class="status" id="status"></div>
+
+  <details id="settings">
+    <summary>⚙️ ตั้งค่า</summary>
+    <label>ลิงก์ Apps Script (ที่ลงท้ายด้วย /exec)</label>
+    <input type="text" id="apiUrl" placeholder="https://script.google.com/macros/s/xxxx/exec">
+
+    <label>ขอบบนของกรอบซับ: <span id="topV"></span>%</label>
+    <input type="range" id="top" min="0" max="95" value="70">
+    <label>ขอบล่างของกรอบซับ: <span id="botV"></span>%</label>
+    <input type="range" id="bot" min="5" max="100" value="95">
+
+    <label>ความสว่างขั้นต่ำของตัวหนังสือ: <span id="thrV"></span> (ซับเป็นตัวขาว ถ้าอ่านไม่ออกให้ลองปรับ)</label>
+    <input type="range" id="thr" min="80" max="240" value="165">
+
+    <label>อ่านจอทุกกี่วินาที: <span id="intV"></span></label>
+    <input type="range" id="int" min="0.5" max="3" step="0.25" value="1.25">
+
+    <label class="chk"><input type="checkbox" id="showEn" checked> แสดงภาษาอังกฤษด้วย</label>
+    <label class="chk"><input type="checkbox" id="showDbg"> แสดงภาพที่เว็บอ่านได้ (ไว้ปรับค่า)</label>
+    <canvas id="dbg" style="display:none"></canvas>
+  </details>
+
+  <div class="hist" id="hist"></div>
+</div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const video = $("video");
+  const work = document.createElement("canvas");
+  const wctx = work.getContext("2d", { willReadFrequently: true });
+
+  // ---------- settings (saved in this browser) ----------
+  const store = {
+    get(k, d){ try{ const v = localStorage.getItem("ls_"+k); return v===null? d : v; }catch(e){ return d; } },
+    set(k, v){ try{ localStorage.setItem("ls_"+k, v); }catch(e){} }
+  };
+  const fields = ["apiUrl","top","bot","thr","int"];
+  fields.forEach(f => { const v = store.get(f, null); if (v!==null) $(f).value = v; });
+  $("showEn").checked = store.get("showEn","1")==="1";
+  if (!$("apiUrl").value) $("settings").open = true;
+
+  function syncUI(){
+    let t = +$("top").value, b = +$("bot").value;
+    if (b <= t + 4) { b = Math.min(100, t + 5); $("bot").value = b; }
+    $("topV").textContent = t; $("botV").textContent = b;
+    $("thrV").textContent = $("thr").value; $("intV").textContent = $("int").value;
+    $("box").style.top = t + "%"; $("box").style.height = (b - t) + "%";
+    document.body.classList.toggle("hide-en", !$("showEn").checked);
+    $("dbg").style.display = $("showDbg").checked ? "block" : "none";
+  }
+  fields.forEach(f => $(f).addEventListener("input", () => { store.set(f, $(f).value.trim()); syncUI(); }));
+  $("showEn").addEventListener("change", () => { store.set("showEn", $("showEn").checked?"1":"0"); syncUI(); });
+  $("showDbg").addEventListener("change", syncUI);
+  syncUI();
+
+  function status(msg, err){ $("status").textContent = msg || ""; $("status").className = "status" + (err ? " err" : ""); }
+
+  // ---------- text helpers ----------
+  function cleanText(raw){
+    const lines = raw.split(/\n+/).map(l => l.replace(/[|_~=<>{}\[\]\\]/g, " ").replace(/\s+/g, " ").trim())
+      .filter(l => {
+        if (l.length < 3) return false;
+        const letters = (l.match(/[A-Za-z]/g) || []).length;
+        return letters / l.replace(/\s/g,"").length > 0.6;
+      });
+    let t = lines.join(" ").replace(/\s+/g, " ").trim();
+    const words = t.split(" ").filter(w => /[A-Za-z]{2,}/.test(w));
+    return words.length >= 2 ? t : "";
+  }
+  function norm(s){ return s.toLowerCase().replace(/[^a-z0-9 ]/g, "").replace(/\s+/g, " ").trim(); }
+  function similar(a, b){ // Dice coefficient on character bigrams
+    a = norm(a); b = norm(b);
+    if (!a || !b) return 0;
+    if (a === b) return 1;
+    const grams = s => { const m = new Map(); for (let i=0;i<s.length-1;i++){ const g=s.substr(i,2); m.set(g,(m.get(g)||0)+1);} return m; };
+    const A = grams(a), B = grams(b); let inter = 0, total = 0;
+    A.forEach((n,g) => { inter += Math.min(n, B.get(g)||0); total += n; });
+    B.forEach(n => total += n);
+    return total ? 2*inter/total : 0;
+  }
+
+  // ---------- translation ----------
+  const cache = new Map();
+  async function translate(text){
+    if (cache.has(text)) return cache.get(text);
+    const url = $("apiUrl").value.trim();
+    if (!/^https:\/\/script\.google\.com\/.+\/exec$/.test(url)) throw new Error("ยังไม่ได้ใส่ลิงก์ Apps Script ที่ถูกต้องในตั้งค่า");
+    const res = await fetch(url + "?q=" + encodeURIComponent(text));
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    cache.set(text, data.th);
+    return data.th;
+  }
+
+  // ---------- display ----------
+  let fadeTimer = null;
+  function show(en, th){
+    $("curTh").textContent = th; $("curEn").textContent = en;
+    $("subBox").classList.remove("faded");
+    clearTimeout(fadeTimer);
+    fadeTimer = setTimeout(() => $("subBox").classList.add("faded"), 7000);
+    const it = document.createElement("div");
+    it.className = "item";
+    it.innerHTML = '<div class="t"></div><div class="e"></div>';
+    it.querySelector(".t").textContent = th;
+    it.querySelector(".e").textContent = en;
+    $("hist").prepend(it);
+    while ($("hist").children.length > 200) $("hist").lastChild.remove();
+  }
+  $("clearBtn").addEventListener("click", () => { $("hist").innerHTML = ""; });
+
+  // ---------- capture + OCR loop ----------
+  let worker = null, running = false, timer = null, busy = false;
+  let lastRead = "", lastSent = "", wakeLock = null;
+
+  function grabSubtitleArea(){
+    const vw = video.videoWidth, vh = video.videoHeight;
+    if (!vw || !vh) return null;
+    const t = +$("top").value / 100, b = +$("bot").value / 100;
+    const sx = Math.round(vw * 0.05), sw = Math.round(vw * 0.90);
+    const sy = Math.round(vh * t), sh = Math.max(10, Math.round(vh * (b - t)));
+    const scale = Math.min(2, 1600 / sw);
+    work.width = Math.round(sw * scale); work.height = Math.round(sh * scale);
+    wctx.drawImage(video, sx, sy, sw, sh, 0, 0, work.width, work.height);
+    // keep bright (white) text as black on white background
+    const img = wctx.getImageData(0, 0, work.width, work.height), d = img.data, thr = +$("thr").value;
+    for (let i = 0; i < d.length; i += 4){
+      const lum = 0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2];
+      const v = lum >= thr ? 0 : 255;
+      d[i] = d[i+1] = d[i+2] = v; d[i+3] = 255;
+    }
+    wctx.putImageData(img, 0, 0);
+    if ($("showDbg").checked){
+      const dbg = $("dbg"); dbg.width = work.width; dbg.height = work.height;
+      dbg.getContext("2d").drawImage(work, 0, 0);
+    }
+    return work;
+  }
+
+  async function tick(){
+    if (!running) return;
+    if (!busy){
+      busy = true;
+      try{
+        const c = grabSubtitleArea();
+        if (c){
+          const { data } = await worker.recognize(c);
+          const text = cleanText(data.text || "");
+          if (text){
+            // translate only when the same line was read twice in a row (avoids half-read junk)
+            // and it is different from the line already translated
+            const stable = similar(text, lastRead) > 0.8;
+            lastRead = text;
+            if (stable && similar(text, lastSent) < 0.8){
+              lastSent = text;
+              status("กำลังแปล…");
+              const th = await translate(text);
+              show(text, th);
+              status("กำลังอ่านซับ…");
+            }
+          } else {
+            lastRead = "";
+          }
+        }
+      } catch(e){
+        status("⚠️ " + (e.message || e), true);
+      } finally {
+        busy = false;
+      }
+    }
+    timer = setTimeout(tick, +$("int").value * 1000);
+  }
+
+  async function start(){
+    if (!$("apiUrl").value.trim()){ $("settings").open = true; status("ใส่ลิงก์ Apps Script ในตั้งค่าก่อน", true); return; }
+    $("startBtn").disabled = true;
+    try{
+      status("กำลังเปิดกล้อง…");
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false
+      });
+      video.srcObject = stream; await video.play();
+      if (!worker){
+        status("กำลังโหลดตัวอ่านตัวอักษร (ครั้งแรกอาจใช้เวลาสักครู่)…");
+        worker = await Tesseract.createWorker("eng");
+        await worker.setParameters({
+          tessedit_pageseg_mode: "6",
+          tessedit_char_whitelist: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 .,!?'\"-:;$%&()/"
+        });
+      }
+      try { if ("wakeLock" in navigator) wakeLock = await navigator.wakeLock.request("screen"); } catch(e){}
+      running = true; status("กำลังอ่านซับ…");
+      $("startBtn").textContent = "⏸ หยุด";
+      tick();
+    } catch(e){
+      status("เปิดกล้องไม่ได้: " + (e.message || e) + " (ต้องกดอนุญาตกล้อง และเปิดเว็บผ่าน https)", true);
+    } finally {
+      $("startBtn").disabled = false;
+    }
+  }
+
+  function stop(){
+    running = false; clearTimeout(timer);
+    const s = video.srcObject; if (s) s.getTracks().forEach(t => t.stop());
+    video.srcObject = null;
+    try { wakeLock && wakeLock.release(); } catch(e){}
+    wakeLock = null;
+    $("startBtn").textContent = "▶ เริ่ม"; status("หยุดแล้ว");
+  }
+
+  $("startBtn").addEventListener("click", () => running ? stop() : start());
+  document.addEventListener("visibilitychange", async () => {
+    if (document.visibilityState === "visible" && running && "wakeLock" in navigator){
+      try { wakeLock = await navigator.wakeLock.request("screen"); } catch(e){}
+    }
+  });
+})();
+</script>
+</body>
+</html>
